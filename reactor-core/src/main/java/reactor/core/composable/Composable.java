@@ -183,10 +183,10 @@ public abstract class Composable<T> implements Pipeline<T>, Lifecycle {
 	 * @param <V> the type of the return value of the transformation function
 	 * @return a new {@code Composable} containing the transformed values
 	 */
-	public <V,C extends Composable<V>> Composable<V> mapMany(@Nonnull final Function<T, C> fn) {
+	public <V> Composable<V> mapMany(@Nonnull final Function<T, Composable<V>> fn) {
 		Assert.notNull(fn, "FlatMap function cannot be null.");
-		final Deferred<V,C> d = createDeferred();
-		add(new MapManyAction<T, V, C>(
+		final Deferred<V, ? extends Composable<V>> d = createDeferred();
+		add(new MapManyAction<T, V, Composable<V>>(
 				fn,
 				d.compose().getObservable(),
 				d.compose().getAccept().getT2(),

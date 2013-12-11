@@ -20,7 +20,6 @@ import reactor.convert.DelegatingConverter;
 import reactor.core.Environment;
 import reactor.core.Reactor;
 import reactor.event.dispatch.Dispatcher;
-import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.event.dispatch.TraceableDelegatingDispatcher;
 import reactor.event.routing.*;
 import reactor.filter.*;
@@ -187,7 +186,6 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	}
 
 	private Reactor createReactor(Dispatcher dispatcher) {
-		dispatcher = dispatcher != null ? dispatcher : new SynchronousDispatcher();
 		if(traceEventPath) {
 			dispatcher = new TraceableDelegatingDispatcher(dispatcher);
 		}

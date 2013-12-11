@@ -184,7 +184,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	private void init() {
 		getObservable().on(getFlush().getT1(), new Consumer<Event<Void>>() {
 			@Override public void accept(Event<Void> ev) {
-				if(null != supplier && state == State.PENDING) {
+				if(null != supplier) {
 					try {
 						notifyValue(supplier.get());
 					} catch(Throwable t) {
@@ -473,7 +473,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	}
 
 	@Override
-	public <V, C extends Composable<V>> Promise<V> mapMany(@Nonnull Function<T, C> fn) {
+	public <V> Promise<V> mapMany(@Nonnull Function<T, Composable<V>> fn) {
 		return (Promise<V>)super.mapMany(fn);
 	}
 

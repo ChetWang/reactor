@@ -47,7 +47,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class ComposableThroughputTests extends AbstractReactorTest {
 
-	static int length  = 500;
+	static int length  = 250;
 	static int runs    = 1000;
 	static int samples = 3;
 
@@ -99,7 +99,11 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 		dInt.compose().mapMany(new Function<Integer, Composable<Integer>>() {
 			@Override
 			public Composable<Integer> apply(Integer integer) {
-				return Streams.defer(integer).env(env).fork(newReactor).get().compose();
+				return Streams.defer(integer)
+				              .env(env)
+				              //.fork(newReactor)
+				              .get()
+				              .compose();
 			}
 		}).consume(new Consumer<Integer>() {
 			@Override
@@ -112,12 +116,12 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 
 	private void doTestMapMany(String name) throws InterruptedException {
 		doTest(null, name, createMapManyDeferred(false));
-		env.getRootReactor().getConsumerRegistry().clear();
+		//env.getRootReactor().getConsumerRegistry().clear();
 	}
 
 	private void doTestMapManyFork(String name) throws InterruptedException {
 		doTest(null, name, createMapManyDeferred(true));
-		env.getRootReactor().getConsumerRegistry().clear();
+		//env.getRootReactor().getConsumerRegistry().clear();
 	}
 
 	private void doTest(Dispatcher dispatcher, String name) throws InterruptedException {
