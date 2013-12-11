@@ -90,6 +90,11 @@ public class DispatcherTaskExecutor implements TaskExecutor {
 		public List<Registration<? extends Consumer<? extends Event<?>>>> select(Object key) {
 			return Collections.emptyList();
 		}
+
+		@Override
+		public void clear() {
+			throw new UnsupportedOperationException();
+		}
 	}
 
 }

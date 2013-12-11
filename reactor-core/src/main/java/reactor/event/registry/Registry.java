@@ -58,4 +58,9 @@ public interface Registry<T> extends Iterable<Registration<? extends T>> {
 	 */
 	List<Registration<? extends T>> select(Object key);
 
+	/**
+	 * Remove any objects contained in this registry.
+	 */
+	void clear();
+
 }

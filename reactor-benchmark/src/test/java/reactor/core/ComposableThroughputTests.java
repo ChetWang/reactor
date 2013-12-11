@@ -112,18 +112,12 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 
 	private void doTestMapMany(String name) throws InterruptedException {
 		doTest(null, name, createMapManyDeferred(false));
-		for(Registration<? extends Consumer<? extends Event<?>>> registration :
-				env.getRootReactor().getConsumerRegistry()){
-			registration.cancel();
-		}
+		env.getRootReactor().getConsumerRegistry().clear();
 	}
 
 	private void doTestMapManyFork(String name) throws InterruptedException {
 		doTest(null, name, createMapManyDeferred(true));
-		for(Registration<? extends Consumer<? extends Event<?>>> registration :
-				env.getRootReactor().getConsumerRegistry()){
-			registration.cancel();
-		}
+		env.getRootReactor().getConsumerRegistry().clear();
 	}
 
 	private void doTest(Dispatcher dispatcher, String name) throws InterruptedException {

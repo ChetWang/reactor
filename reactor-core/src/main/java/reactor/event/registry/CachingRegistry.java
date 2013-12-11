@@ -68,13 +68,13 @@ public class CachingRegistry<T> implements Registry<T> {
 				List<Registration<? extends T>> registrationList = registrationCache.get(sel.getObject());
 				if (registrationList == null) {
 					registrationList = new ArrayList<Registration<? extends T>>();
+					registrationCache.put(sel.getObject(), registrationList);
 				}
 				registrationList.add(reg);
-				registrationCache.put(sel.getObject(), registrationList);
 			} else {
-				registrations.add(reg);
 				refreshRequired = true;
 			}
+			registrations.add(reg);
 		} finally {
 			writeLock.unlock();
 		}
@@ -154,7 +154,7 @@ public class CachingRegistry<T> implements Registry<T> {
 	public Iterator<Registration<? extends T>> iterator() {
 		try {
 			readLock.lock();
-			return Collections.unmodifiableList(new ArrayList<Registration<? extends T>>(this.registrations)).iterator();
+			return new ArrayList<Registration<? extends T>>(this.registrations).iterator();
 		} finally {
 			readLock.unlock();
 		}
@@ -195,11 +195,21 @@ public class CachingRegistry<T> implements Registry<T> {
 				log.trace("No objects registered for key {}", object);
 			}
 		}
-		return Collections.unmodifiableList(regs);
+		return regs;
 	}
 
 	protected void cacheMiss(Object key) {
+	}
 
+	@Override
+	public void clear() {
+		writeLock.lock();
+		try{
+			registrationCache.clear();
+			registrations.clear();
+		} finally {
+			writeLock.unlock();
+		}
 	}
 
 	private class CachableRegistration<V> implements Registration<V> {
@@ -244,12 +254,12 @@ public class CachingRegistry<T> implements Registry<T> {
 				if (selector.getObject().getClass().equals(Object.class)) {
 					List<Registration<? extends T>> registrationList = registrationCache.get(selector.getObject());
 					if (registrationList != null) {
-						registrationList.remove(object);
+						registrationList.remove(CachableRegistration.this);
 					}
 				} else {
-					registrations.remove(CachableRegistration.this);
 					refreshRequired = true;
 				}
+				registrations.remove(CachableRegistration.this);
 				if (Lifecycle.class.isAssignableFrom(object.getClass())) {
 					((Lifecycle) object).cancel();
 				}
