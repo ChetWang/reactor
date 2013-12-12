@@ -40,12 +40,12 @@ import reactor.event.selector.Selector;
  */
 public class CachingRegistry<T> implements Registry<T> {
 
-	private final ReentrantReadWriteLock                       readWriteLock     = new ReentrantReadWriteLock(true);
-	private final Lock                                         readLock          = readWriteLock.readLock();
-	private final Lock                                         writeLock         = readWriteLock.writeLock();
+	private final ReentrantReadWriteLock                       readWriteLock            = new ReentrantReadWriteLock(true);
+	private final Lock                                         readLock                 = readWriteLock.readLock();
+	private final Lock                                         writeLock                = readWriteLock.writeLock();
 	private final List<Registration<? extends T>>              registrations     = new ArrayList<Registration<? extends T>>();
-	private final Map<Object, List<Registration<? extends T>>> registrationCache = new HashMap<Object, List<Registration<? extends T>>>();
-	private final Logger                                       log               = LoggerFactory.getLogger(CachingRegistry.class);
+	private final Map<Object, List<Registration<? extends T>>> registrationCache        = new HashMap<Object, List<Registration<? extends T>>>();
+	private final Logger                                       log                      = LoggerFactory.getLogger(CachingRegistry.class);
 	private final boolean cache;
 
 	public CachingRegistry() {
@@ -64,7 +64,7 @@ public class CachingRegistry<T> implements Registry<T> {
 
 		writeLock.lock();
 		try {
-			if (sel.getObject().getClass().equals(Object.class)) {
+			if (Object.class == sel.getObject().getClass()) {
 				List<Registration<? extends T>> registrationList = registrationCache.get(sel.getObject());
 				if (registrationList == null) {
 					registrationList = new ArrayList<Registration<? extends T>>();
@@ -72,9 +72,9 @@ public class CachingRegistry<T> implements Registry<T> {
 				registrationList.add(reg);
 				registrationCache.put(sel.getObject(), registrationList);
 			} else {
-				registrations.add(reg);
 				refreshRequired = true;
 			}
+			registrations.add(reg);
 		} finally {
 			writeLock.unlock();
 		}
@@ -89,13 +89,13 @@ public class CachingRegistry<T> implements Registry<T> {
 
 		writeLock.lock();
 		try {
-			if (registrations.isEmpty()) {
+			if(registrations.isEmpty()) {
 				return false;
 			}
 
 			List<Registration<? extends T>> regs = findMatchingRegistrations(key);
 
-			if (!regs.isEmpty()) {
+			if(!regs.isEmpty()) {
 				registrations.removeAll(regs);
 				refreshRequired = true;
 				return true;
@@ -184,22 +184,34 @@ public class CachingRegistry<T> implements Registry<T> {
 	}
 
 	private List<Registration<? extends T>> findMatchingRegistrations(Object object) {
-		List<Registration<? extends T>> regs = new ArrayList<Registration<? extends T>>();
-		for (Registration<? extends T> reg : registrations) {
+		List<Registration<? extends T>> regs = null;
+		for(Registration<? extends T> reg : registrations) {
 			if (reg.getSelector().matches(object)) {
-				regs.add(reg);
+				regs = new ZeroCopyList<Registration<? extends T>>(regs, reg);
 			}
 		}
-		if (regs.isEmpty()) {
+		if (null == regs || regs.isEmpty()) {
 			if (log.isTraceEnabled()) {
 				log.trace("No objects registered for key {}", object);
 			}
+			return Collections.emptyList();
+		} else {
+			return Collections.unmodifiableList(regs);
 		}
-		return Collections.unmodifiableList(regs);
 	}
 
 	protected void cacheMiss(Object key) {
+	}
 
+	@Override
+	public void clear() {
+		writeLock.lock();
+		try {
+			registrationCache.clear();
+			registrations.clear();
+		} finally {
+			writeLock.unlock();
+		}
 	}
 
 	private class CachableRegistration<V> implements Registration<V> {
@@ -241,15 +253,8 @@ public class CachingRegistry<T> implements Registry<T> {
 
 			writeLock.lock();
 			try {
-				if (selector.getObject().getClass().equals(Object.class)) {
-					List<Registration<? extends T>> registrationList = registrationCache.get(selector.getObject());
-					if (registrationList != null) {
-						registrationList.remove(object);
-					}
-				} else {
-					registrations.remove(CachableRegistration.this);
-					refreshRequired = true;
-				}
+				registrations.remove(CachableRegistration.this);
+				refreshRequired = true;
 				if (Lifecycle.class.isAssignableFrom(object.getClass())) {
 					((Lifecycle) object).cancel();
 				}
