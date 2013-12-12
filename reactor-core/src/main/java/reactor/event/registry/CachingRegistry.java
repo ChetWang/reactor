@@ -40,12 +40,12 @@ import reactor.event.selector.Selector;
  */
 public class CachingRegistry<T> implements Registry<T> {
 
-	private final ReentrantReadWriteLock                       readWriteLock     = new ReentrantReadWriteLock(true);
-	private final Lock                                         readLock          = readWriteLock.readLock();
-	private final Lock                                         writeLock         = readWriteLock.writeLock();
+	private final ReentrantReadWriteLock                       readWriteLock            = new ReentrantReadWriteLock(true);
+	private final Lock                                         readLock                 = readWriteLock.readLock();
+	private final Lock                                         writeLock                = readWriteLock.writeLock();
 	private final List<Registration<? extends T>>              registrations     = new ArrayList<Registration<? extends T>>();
-	private final Map<Object, List<Registration<? extends T>>> registrationCache = new HashMap<Object, List<Registration<? extends T>>>();
-	private final Logger                                       log               = LoggerFactory.getLogger(CachingRegistry.class);
+	private final Map<Object, List<Registration<? extends T>>> registrationCache        = new HashMap<Object, List<Registration<? extends T>>>();
+	private final Logger                                       log                      = LoggerFactory.getLogger(CachingRegistry.class);
 	private final boolean cache;
 
 	public CachingRegistry() {
@@ -64,17 +64,8 @@ public class CachingRegistry<T> implements Registry<T> {
 
 		writeLock.lock();
 		try {
-			if (sel.getObject().getClass().equals(Object.class)) {
-				List<Registration<? extends T>> registrationList = registrationCache.get(sel.getObject());
-				if (registrationList == null) {
-					registrationList = new ArrayList<Registration<? extends T>>();
-					registrationCache.put(sel.getObject(), registrationList);
-				}
-				registrationList.add(reg);
-			} else {
-				refreshRequired = true;
-			}
 			registrations.add(reg);
+				refreshRequired = true;
 		} finally {
 			writeLock.unlock();
 		}
@@ -89,13 +80,13 @@ public class CachingRegistry<T> implements Registry<T> {
 
 		writeLock.lock();
 		try {
-			if (registrations.isEmpty()) {
+			if(registrations.isEmpty()) {
 				return false;
 			}
 
 			List<Registration<? extends T>> regs = findMatchingRegistrations(key);
 
-			if (!regs.isEmpty()) {
+			if(!regs.isEmpty()) {
 				registrations.removeAll(regs);
 				refreshRequired = true;
 				return true;
@@ -154,7 +145,7 @@ public class CachingRegistry<T> implements Registry<T> {
 	public Iterator<Registration<? extends T>> iterator() {
 		try {
 			readLock.lock();
-			return new ArrayList<Registration<? extends T>>(this.registrations).iterator();
+			return Collections.unmodifiableList(new ArrayList<Registration<? extends T>>(this.registrations)).iterator();
 		} finally {
 			readLock.unlock();
 		}
@@ -185,7 +176,7 @@ public class CachingRegistry<T> implements Registry<T> {
 
 	private List<Registration<? extends T>> findMatchingRegistrations(Object object) {
 		List<Registration<? extends T>> regs = new ArrayList<Registration<? extends T>>();
-		for (Registration<? extends T> reg : registrations) {
+		for(Registration<? extends T> reg : registrations) {
 			if (reg.getSelector().matches(object)) {
 				regs.add(reg);
 			}
@@ -195,7 +186,7 @@ public class CachingRegistry<T> implements Registry<T> {
 				log.trace("No objects registered for key {}", object);
 			}
 		}
-		return regs;
+		return Collections.unmodifiableList(regs);
 	}
 
 	protected void cacheMiss(Object key) {
@@ -204,7 +195,7 @@ public class CachingRegistry<T> implements Registry<T> {
 	@Override
 	public void clear() {
 		writeLock.lock();
-		try{
+		try {
 			registrationCache.clear();
 			registrations.clear();
 		} finally {
@@ -251,15 +242,8 @@ public class CachingRegistry<T> implements Registry<T> {
 
 			writeLock.lock();
 			try {
-				if (selector.getObject().getClass().equals(Object.class)) {
-					List<Registration<? extends T>> registrationList = registrationCache.get(selector.getObject());
-					if (registrationList != null) {
-						registrationList.remove(CachableRegistration.this);
-					}
-				} else {
-					refreshRequired = true;
-				}
 				registrations.remove(CachableRegistration.this);
+				refreshRequired = true;
 				if (Lifecycle.class.isAssignableFrom(object.getClass())) {
 					((Lifecycle) object).cancel();
 				}
