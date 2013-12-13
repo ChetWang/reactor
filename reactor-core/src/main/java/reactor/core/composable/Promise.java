@@ -16,21 +16,20 @@
 
 package reactor.core.composable;
 
+import reactor.core.Environment;
+import reactor.core.Observable;
 import reactor.core.action.Action;
 import reactor.core.action.CallbackAction;
 import reactor.core.action.ConnectAction;
-import reactor.core.Environment;
-import reactor.core.Observable;
 import reactor.core.spec.Reactors;
 import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
+import reactor.event.selector.ObjectSelector;
 import reactor.event.selector.Selector;
-import reactor.event.selector.Selectors;
 import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.function.Predicate;
 import reactor.function.Supplier;
-import reactor.tuple.Tuple2;
 import reactor.util.Assert;
 
 import javax.annotation.Nonnull;
@@ -60,8 +59,8 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class Promise<T> extends Composable<T> implements Supplier<T> {
 
-	private final Tuple2<Selector, Object> complete = Selectors.$();
-	private final ReentrantLock lock = new ReentrantLock();
+	private final Selector      complete = new ObjectSelector<Object>(new Object());
+	private final ReentrantLock lock     = new ReentrantLock();
 
 	private final long        defaultTimeout;
 	private final Environment environment;
@@ -96,13 +95,12 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 		this.environment = env;
 		this.pendingCondition = lock.newCondition();
 
-		consumeEvent(new Consumer<Event<T>>(){
+		consumeEvent(new Consumer<Event<T>>() {
 			@Override
 			public void accept(Event<T> event) {
 				valueAccepted(event.getData());
 			}
 		});
-
 		when(Throwable.class, new Consumer<Throwable>() {
 			@Override
 			public void accept(Throwable throwable) {
@@ -182,7 +180,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	 * Watches for flush events and accept the delayed value passed via {@link Supplier}.
 	 */
 	private void init() {
-		getObservable().on(getFlush().getT1(), new Consumer<Event<Void>>() {
+		getObservable().on(getFlush(), new Consumer<Event<Void>>() {
 			@Override
 			public void accept(Event<Void> ev) {
 				if (null != supplier && state == State.PENDING) {
@@ -210,7 +208,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 		if(isComplete()) {
 			Reactors.schedule(onComplete, this, getObservable());
 		} else {
-			getObservable().on(complete.getT1(), new CallbackAction<Promise<T>>(onComplete, getObservable(), null));
+			getObservable().on(complete, new CallbackAction<Promise<T>>(onComplete, getObservable(), null));
 		}
 		return this;
 	}
@@ -550,7 +548,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 		} finally {
 			lock.unlock();
 		}
-		getObservable().notify(complete.getT2(), Event.wrap(this));
+		getObservable().notify(complete.getObject(), Event.wrap(this));
 
 	}
 
@@ -567,7 +565,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 		} finally {
 			lock.unlock();
 		}
-		getObservable().notify(complete.getT2(), Event.wrap(this));
+		getObservable().notify(complete.getObject(), Event.wrap(this));
 	}
 
 	@Override
@@ -603,7 +601,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 
 	@Override
 	public Promise<T> cancel() {
-		getObservable().notify("control://localhost/cancel", Event.wrap(complete.getT2()));
+		getObservable().notify("control://localhost/cancel", Event.wrap(complete.getObject()));
 		return (Promise<T>)super.cancel();
 	}
 

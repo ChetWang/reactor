@@ -20,7 +20,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.event.lifecycle.Lifecycle;
 import reactor.event.selector.Selector;
-import reactor.util.ZeroCopyList;
 
 import java.util.*;
 import java.util.concurrent.locks.Lock;
@@ -66,7 +65,7 @@ public class CachingRegistry<T> implements Registry<T> {
 		writeLock.lock();
 		try {
 			Object key = sel.getObject();
-			if (Object.class == key.getClass()) {
+			if (null == key.getClass().getSuperclass()) {
 				List<Registration<? extends T>> registrationList = directRegistrationCache.get(key);
 				if (registrationList == null) {
 					registrationList = new ArrayList<Registration<? extends T>>();
@@ -75,8 +74,8 @@ public class CachingRegistry<T> implements Registry<T> {
 				registrationList.add(reg);
 			} else {
 				refreshRequired = true;
+				registrations.add(reg);
 			}
-			registrations.add(reg);
 		} finally {
 			writeLock.unlock();
 		}
@@ -117,7 +116,7 @@ public class CachingRegistry<T> implements Registry<T> {
 		readLock.lock();
 
 		try {
-			if (key != null && key.getClass().equals(Object.class)) {
+			if (key != null && null == key.getClass().getSuperclass()) {
 				matchingRegistrations = directRegistrationCache.get(key);
 			} else {
 				if (refreshRequired) {
@@ -228,6 +227,8 @@ public class CachingRegistry<T> implements Registry<T> {
 	private class CachableRegistration<V> implements Registration<V> {
 		private final Selector selector;
 		private final V        object;
+		private final boolean  lifecycle;
+		private final boolean  direct;
 		private volatile boolean cancelAfterUse = false;
 		private volatile boolean cancelled      = false;
 		private volatile boolean paused         = false;
@@ -235,6 +236,8 @@ public class CachingRegistry<T> implements Registry<T> {
 		private CachableRegistration(Selector selector, V object) {
 			this.selector = selector;
 			this.object = object;
+			this.lifecycle = Lifecycle.class.isAssignableFrom(object.getClass());
+			this.direct = null == selector.getObject().getClass().getSuperclass();
 		}
 
 		@Override
@@ -264,17 +267,17 @@ public class CachingRegistry<T> implements Registry<T> {
 
 			writeLock.lock();
 			try {
-				registrations.remove(CachableRegistration.this);
-				if (selector.getObject().getClass().equals(Object.class)) {
+				if (direct) {
 					List<Registration<? extends T>> registrationList = directRegistrationCache.get(selector.getObject());
 					registrationList.remove(CachableRegistration.this);
 					if (registrationList.isEmpty()) {
 						directRegistrationCache.remove(selector.getObject());
 					}
 				} else {
+					registrations.remove(CachableRegistration.this);
 					refreshRequired = true;
 				}
-				if (Lifecycle.class.isAssignableFrom(object.getClass())) {
+				if (lifecycle) {
 					((Lifecycle) object).cancel();
 				}
 			} finally {
@@ -292,7 +295,7 @@ public class CachingRegistry<T> implements Registry<T> {
 		@Override
 		public Registration<V> pause() {
 			paused = true;
-			if (Lifecycle.class.isAssignableFrom(object.getClass())) {
+			if (lifecycle) {
 				((Lifecycle) object).pause();
 			}
 			return this;
@@ -306,7 +309,7 @@ public class CachingRegistry<T> implements Registry<T> {
 		@Override
 		public Registration<V> resume() {
 			paused = false;
-			if (Lifecycle.class.isAssignableFrom(object.getClass())) {
+			if (lifecycle) {
 				((Lifecycle) object).resume();
 			}
 			return this;
