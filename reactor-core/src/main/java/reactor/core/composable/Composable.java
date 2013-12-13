@@ -183,10 +183,10 @@ public abstract class Composable<T> implements Pipeline<T>, Lifecycle {
 	 * @param <V> the type of the return value of the transformation function
 	 * @return a new {@code Composable} containing the transformed values
 	 */
-	public <V> Composable<V> mapMany(@Nonnull final Function<T, Composable<V>> fn) {
+	public <V,C extends Composable<V>> Composable<V> mapMany(@Nonnull final Function<T, C> fn) {
 		Assert.notNull(fn, "FlatMap function cannot be null.");
-		final Deferred<V, ? extends Composable<V>> d = createDeferred();
-		add(new MapManyAction<T, V, Composable<V>>(
+		final Deferred<V,C> d = createDeferred();
+		add(new MapManyAction<T, V, C>(
 				fn,
 				d.compose().getObservable(),
 				d.compose().getAccept().getT2(),
@@ -284,6 +284,7 @@ public abstract class Composable<T> implements Pipeline<T>, Lifecycle {
 	@Override
 	public Composable<T> pause() {
 		this.events.notify("control://localhost/pause", Event.wrap(accept.getT2()));
+		this.events.notify("control://localhost/pause", Event.wrap(flush.getT2()));
 		return this;
 	}
 
@@ -295,6 +296,7 @@ public abstract class Composable<T> implements Pipeline<T>, Lifecycle {
 	@Override
 	public Composable<T> resume() {
 		this.events.notify("control://localhost/resume", Event.wrap(accept.getT2()));
+		this.events.notify("control://localhost/resume", Event.wrap(flush.getT2()));
 		return this;
 	}
 
@@ -306,6 +308,8 @@ public abstract class Composable<T> implements Pipeline<T>, Lifecycle {
 	@Override
 	public Composable<T> cancel() {
 		this.events.notify("control://localhost/cancel", Event.wrap(accept.getT2()));
+		this.events.notify("control://localhost/cancel", Event.wrap(error.getT2()));
+		this.events.notify("control://localhost/cancel", Event.wrap(flush.getT2()));
 		return this;
 	}
 

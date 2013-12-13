@@ -23,12 +23,12 @@ import org.junit.Test;
 import reactor.AbstractReactorTest;
 import reactor.core.composable.Composable;
 import reactor.core.composable.Deferred;
+import reactor.core.composable.Promise;
 import reactor.core.composable.Stream;
+import reactor.core.composable.spec.Promises;
 import reactor.core.composable.spec.Streams;
-import reactor.event.Event;
 import reactor.event.dispatch.ActorDispatcher;
 import reactor.event.dispatch.BlockingQueueDispatcher;
-import reactor.event.registry.Registration;
 import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.event.dispatch.Dispatcher;
@@ -99,31 +99,40 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 		dInt.compose().mapMany(new Function<Integer, Composable<Integer>>() {
 			@Override
 			public Composable<Integer> apply(Integer integer) {
-				return Streams.defer(integer).env(env).fork(newReactor).get().compose();
+				Deferred<Integer, Promise<Integer>> deferred = Promises.<Integer>defer().env(env).fork(newReactor).get();
+				try {
+					return deferred.compose().onComplete(new Consumer<Promise<Integer>>() {
+						@Override
+						public void accept(Promise<Integer> integerPromise) {
+							integerPromise.cancel();
+						}
+					});
+				} finally {
+					deferred.accept(integer);
+				}
 			}
-		}).consume(new Consumer<Integer>() {
-			@Override
-			public void accept(Integer integer) {
-				latch.countDown();
+		}
+
+		).
+
+			consume(new Consumer<Integer>() {
+				@Override
+				public void accept(Integer integer) {
+					latch.countDown();
+				}
 			}
-		});
-		return dInt;
-	}
+
+			);
+			return dInt;
+		}
 
 	private void doTestMapMany(String name) throws InterruptedException {
 		doTest(null, name, createMapManyDeferred(false));
-		for(Registration<? extends Consumer<? extends Event<?>>> registration :
-				env.getRootReactor().getConsumerRegistry()){
-			registration.cancel();
-		}
+		env.getRootReactor().getConsumerRegistry().clear();
 	}
 
 	private void doTestMapManyFork(String name) throws InterruptedException {
 		doTest(null, name, createMapManyDeferred(true));
-		for(Registration<? extends Consumer<? extends Event<?>>> registration :
-				env.getRootReactor().getConsumerRegistry()){
-			registration.cancel();
-		}
 	}
 
 	private void doTest(Dispatcher dispatcher, String name) throws InterruptedException {

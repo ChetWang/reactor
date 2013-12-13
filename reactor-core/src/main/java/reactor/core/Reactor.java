@@ -85,7 +85,7 @@ public class Reactor implements Observable {
 	 * 		The {@link Dispatcher} to use. May be {@code null} in which case a new {@link
 	 * 		SynchronousDispatcher} is used
 	 */
-	public Reactor(Dispatcher dispatcher) {
+	public  Reactor(Dispatcher dispatcher) {
 		this(dispatcher,
 		     null);
 	}
@@ -109,7 +109,7 @@ public class Reactor implements Observable {
   }
 
 	/**
-	 * Create a new {@literal Reactor} that uses the given {@code dispatacher} and {@code eventRouter}.
+	 * Create a new {@literal Reactor} that uses the given {@code dispatcher} and {@code eventRouter}.
 	 *
 	 * @param dispatcher
 	 * 		The {@link Dispatcher} to use. May be {@code null} in which case a new synchronous  dispatcher is
@@ -207,7 +207,7 @@ public class Reactor implements Observable {
 	 * @return  {@link this}.
 	 */
 	public Reactor control(Observable observable){
-		observable.on(new UriSelector("control://*/pause"), new Consumer<Event<?>>() {
+		observable.on(Selectors.$("control://localhost/pause"), new Consumer<Event<?>>() {
 			@Override
 			public void accept(Event<?> event) {
 				for(Registration<? extends Consumer<? extends Event<?>>> registration :
@@ -216,7 +216,7 @@ public class Reactor implements Observable {
 				}
 			}
 		});
-		observable.on(new UriSelector("control://*/resume"), new Consumer<Event<?>>() {
+		observable.on(Selectors.$("control://localhost/resume"), new Consumer<Event<?>>() {
 			@Override
 			public void accept(Event<?> event) {
 				for(Registration<? extends Consumer<? extends Event<?>>> registration :
@@ -225,7 +225,7 @@ public class Reactor implements Observable {
 				}
 			}
 		});
-		observable.on(new UriSelector("control://*/cancel"), new Consumer<Event<?>>() {
+		observable.on(Selectors.$("control://localhost/cancel"), new Consumer<Event<?>>() {
 			@Override
 			public void accept(Event<?> event) {
 				for(Registration<? extends Consumer<? extends Event<?>>> registration :

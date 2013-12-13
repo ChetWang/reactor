@@ -183,11 +183,12 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	 */
 	private void init() {
 		getObservable().on(getFlush().getT1(), new Consumer<Event<Void>>() {
-			@Override public void accept(Event<Void> ev) {
-				if(null != supplier) {
+			@Override
+			public void accept(Event<Void> ev) {
+				if (null != supplier && state == State.PENDING) {
 					try {
 						notifyValue(supplier.get());
-					} catch(Throwable t) {
+					} catch (Throwable t) {
 						notifyError(t);
 					}
 				}
@@ -473,13 +474,14 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	}
 
 	@Override
-	public <V> Promise<V> mapMany(@Nonnull Function<T, Composable<V>> fn) {
+	public <V, C extends Composable<V>> Promise<V> mapMany(@Nonnull Function<T, C> fn) {
 		return (Promise<V>)super.mapMany(fn);
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public <E extends Throwable> Promise<T> when(@Nonnull Class<E> exceptionType, @Nonnull Consumer<E> onError) {
+	public <E extends Throwable> Promise<T> when(@Nonnull final Class<E> exceptionType,
+	                                             @Nonnull final Consumer<E> onError) {
 		lock.lock();
 		try {
 			if(state == State.FAILURE) {
@@ -488,7 +490,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 						Event.wrap((E)error), getObservable());
 			} else {
 				super.when(exceptionType, onError);
-			}
+						}
 			return this;
 		} finally {
 			lock.unlock();
@@ -566,7 +568,6 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 			lock.unlock();
 		}
 		getObservable().notify(complete.getT2(), Event.wrap(this));
-
 	}
 
 	@Override
@@ -597,6 +598,13 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 
 	private enum State {
 		PENDING, SUCCESS, FAILURE;
+	}
+
+
+	@Override
+	public Promise<T> cancel() {
+		getObservable().notify("control://localhost/cancel", Event.wrap(complete.getT2()));
+		return (Promise<T>)super.cancel();
 	}
 
 	@Override
