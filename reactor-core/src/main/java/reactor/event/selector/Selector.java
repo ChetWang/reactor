@@ -16,8 +16,6 @@
 
 package reactor.event.selector;
 
-import java.util.UUID;
-
 /**
  * A {@literal Selector} is a wrapper around an arbitrary object.
  *
@@ -25,14 +23,7 @@ import java.util.UUID;
  * @author Stephane Maldini
  * @author Andy Wilkinson
  */
-public interface Selector  {
-
-	/**
-	 * Get the unique id of this Selector
-	 *
-	 * @return The unique id.
-	 */
-	UUID getId();
+public interface Selector {
 
 	/**
 	 * Get the object being used for comparisons and equals checks.
@@ -44,7 +35,8 @@ public interface Selector  {
 	/**
 	 * Indicates whether this Selector matches the {@code key}.
 	 *
-	 * @param key The key to match
+	 * @param key
+	 * 		The key to match
 	 *
 	 * @return {@code true} if there's a match, otherwise {@code false}.
 	 */
